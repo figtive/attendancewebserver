@@ -6,4 +6,5 @@ class Student(models.Model):
         max_length=25,
     )
     npm = models.IntegerField(
-        max_length=10)
+        max_length=10
+    )
