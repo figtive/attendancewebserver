@@ -5,13 +5,13 @@ from django.db import models
 class Students(models.Model):
     serial_number = models.CharField(max_length=50)
     name = models.CharField(max_length=30)
-    npm = models.IntegerField(max_length=10)
+    npm = models.IntegerField()
 
-class Course(models.model):
+class Courses(models.Model):
     name = models.CharField(max_length=50)
 
 class Classes(models.Model):
-    class_name = models.ForeignKey(Course, on_delete=models.CASCADE)
+    class_name = models.ForeignKey(Courses, on_delete=models.CASCADE)
     time_start = models.TimeField()
     time_end = models.TimeField()
 
