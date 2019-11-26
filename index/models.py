@@ -33,6 +33,7 @@ class Classes(models.Model):
 class Attendance(models.Model):
     student = models.ForeignKey(Students, on_delete=models.CASCADE)
     class_attend = models.ForeignKey(Classes, on_delete=models.CASCADE)
-    time_attend = models.TimeField()
+    time_attend = models.IntegerField()
+
     def __str__(self):
         return 'Attendance: ' + str(self.student) + ' at ' + str(self.class_attend)
