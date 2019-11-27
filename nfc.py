@@ -58,8 +58,7 @@ async def consume(queue):
 def record_attendace(uid):
     date_time_now = datetime.now()
     weekday = date_time_now.weekday()
-    # time_now = date_time_now.time()
-    time_now = time(14,2,2)
+    time_now = date_time_now.time()
 
     student = Students.objects.filter(serial_number=uid)
     class_ = Classes.objects.filter(day=weekday, time_start__lte=time_now, time_end__gte=time_now)
