@@ -8,51 +8,35 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 
-    <title>Hello, world!</title>
+    <title>Attendance System</title>
   </head>
     {% block body %}
     <div class="container">
         <h1>Attendance</h1>
-        {% for attendance in attendees %}
-            <h1>{{attendance.student}}</h1>
-            <p>{{attendance.time_attend}}</p>
-        {% endfor %}
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col">Class</th>
+              <th scope="col">NPM</th>
+              <th scope="col">Name</th>
+              <th scope="col">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for attendance in attendees %}
+              <tr>
+                <th scope="row">{{ forloop.counter }}</th>
+                <td>{{attendance.class_attend.class_name.name}}</td>
+                <td>{{attendance.student.npm}}</td>
+                <td>{{attendance.student.name}}</td>
+                <td>{{attendance.time_attend}}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
     </div>
     {% endblock %}
-  <!--<h1> {{ attendees.attendee }}</h1>
-  <body class="container">
-    <h1>Attendance, 20 November 2019</h1>
-    <h2>Course: Systems Programming</h2>
-    <table class="table">
-  <thead>
-    <tr>
-      <th scope="col"></th>
-      <th scope="col">NPM</th>
-      <th scope="col">Name</th>
-      <th scope="col">Time</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th scope="row">1</th>
-      <td>1706069420 </td>
-      <td>James Charles</td>
-      <td>12:58:23</td>
-    </tr>
-    <tr>
-      <th scope="row">2</th>
-      <td>1706067748</td>
-      <td>Babatunde</td>
-      <td>13:01:23</td>
-    </tr>
-    <tr>
-      <th scope="row">3</th>
-      <td>1706224415</td>
-      <td>Cicak Bin Kadal</td>
-      <td>13:05:12</td>
-    </tr>
-  </tbody>
-</table>-->
     <!-- Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
