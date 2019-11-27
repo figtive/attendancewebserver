@@ -1,6 +1,14 @@
 from django.db import models
 
-# Create your models here.
+DAYS_OF_WEEK = (
+    ('0', 'Monday'),
+    ('1', 'Tuesday'),
+    ('2', 'Wednesday'),
+    ('3', 'Thursday'),
+    ('4', 'Friday'),
+    ('5', 'Saturday'),
+    ('6', 'Sunday'),
+)
 
 class Students(models.Model):
     serial_number = models.CharField(max_length=50)
@@ -25,15 +33,17 @@ class Courses(models.Model):
 
 class Classes(models.Model):
     class_name = models.ForeignKey(Courses, on_delete=models.CASCADE)
+    day = models.CharField(max_length=1, choices=DAYS_OF_WEEK)
     time_start = models.TimeField()
     time_end = models.TimeField()
+
     def __str__(self):
-        return 'Class: ' + str(self.class_name)
+        return 'Class: {} {}'.format(self.class_name, self.day)
 
 class Attendance(models.Model):
     student = models.ForeignKey(Students, on_delete=models.CASCADE)
     class_attend = models.ForeignKey(Classes, on_delete=models.CASCADE)
-    time_attend = models.IntegerField()
+    time_attend = models.DateTimeField()
 
     def __str__(self):
         return 'Attendance: ' + str(self.student) + ' at ' + str(self.class_attend)
