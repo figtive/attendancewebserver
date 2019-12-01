@@ -1,5 +1,7 @@
 import os
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "attendancewebserver.settings")
+os.environ["BASE_DIR"] = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 import django
 django.setup()
 
@@ -51,7 +53,7 @@ async def consume(queue):
             record_attendace(match_pattern)
         else:
             print('cannot read UID')
-            subprocess.run(['python', './lcd.py', "cant read UID"])
+            subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), "cant read UID"])
         await asyncio.sleep(0.5)
     print('output consumer stopped')
 
@@ -68,17 +70,17 @@ def record_attendace(uid):
 
     if not class_:
         print('no class')
-        subprocess.run(['python', './lcd.py', "no ongoing class"])
+        subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), "no ongoing class"])
         return
     print(class_[0])
     if not student:
         print('student not found')
-        subprocess.run(['python', './lcd.py', "student not registered"])
+        subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), "student not registered"])
         return
     print(student[0])
     if student:
         GPIO.output(4, GPIO.HIGH)
-        subprocess.run(['python', './lcd.py', student[0].name[:14], str(student[0].npm)])
+        subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), student[0].name[:14], str(student[0].npm)])
         attendance = Attendance.objects.create(
             student=student[0],
             class_attend=class_[0],
