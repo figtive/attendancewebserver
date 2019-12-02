@@ -22,7 +22,3 @@ def failure_GPIO():
     GPIO.output(failure, GPIO.HIGH)
     time.sleep(0.3)
     GPIO.output(failure, GPIO.LOW)
-
-init_GPIO()
-failure_GPIO()
-exit(0)
