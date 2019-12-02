@@ -36,6 +36,9 @@ async def produce(queue):
 
 async def consume(queue):
     print('output consumer started')
+    lcd_lock = asyncio.Lock()
+    asyncio.create_task(display_date_time_lcd(lcd_lock))
+
     while True:
         item = await queue.get()
         if item is None:
@@ -50,14 +53,18 @@ async def consume(queue):
         elif match is not None:
             match_pattern = re.sub('( |\\n)', '',  match.group().split(':')[1])
             print('UID found {}'.format(match_pattern))
-            record_attendace(match_pattern)
+            asyncio.create_task(record_attendace(match_pattern, lcd_lock))
         else:
             print('cannot read UID')
-            subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), "cant read UID"])
+            if lcd_lock.locked():
+                lcd_lock.release()
+            async with lcd_lock:
+                subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), "cant read UID"])
+                await asyncio.sleep(3)
         await asyncio.sleep(0.5)
     print('output consumer stopped')
 
-def record_attendace(uid):
+async def record_attendace(uid, lcd_lock):
     date_time_now = datetime.now()
     weekday = date_time_now.weekday()
     time_now = date_time_now.time()
@@ -68,27 +75,33 @@ def record_attendace(uid):
     print('recording attendance')
     print(date_time_now)
 
-    if not class_:
-        print('no class')
-        subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), "no ongoing class"])
-        return
-    print(class_[0])
-    if not student:
-        print('student not found')
-        subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), "student not registered"])
-        return
-    print(student[0])
-    if student:
-        GPIO.output(4, GPIO.HIGH)
-        subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), student[0].name[:14], str(student[0].npm)])
-        attendance = Attendance.objects.create(
-            student=student[0],
-            class_attend=class_[0],
-            time_attend=date_time_now.strftime("%Y-%m-%d %H:%M:%S")
-        )
-        sys_time.sleep(1)
+    if lcd_lock.locked():
+        lcd_lock.release()
+    async with lcd_lock:
+        if not class_:
+            print('no class')
+            subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), "no ongoing class"])
+            print(class_[0])
+        elif not student:
+            print('student not found')
+            subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), "student not registered"])
+            print(student[0])
+        elif student:
+            GPIO.output(4, GPIO.HIGH)
+            subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), student[0].name[:14], str(student[0].npm)])
+            attendance = Attendance.objects.create(
+                student=student[0],
+                class_attend=class_[0],
+                time_attend=date_time_now.strftime("%Y-%m-%d %H:%M:%S")
+            )
+        GPIO.output(4, GPIO.LOW)
+        await asyncio.sleep(3)
 
-    GPIO.output(4, GPIO.LOW)
+async def display_date_time_lcd(lcd_lock):
+    while True:
+        async with lcd_lock:
+            subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+        await asyncio.sleep(1)
 
 def start_nfc():
     print("starting nfc..")
