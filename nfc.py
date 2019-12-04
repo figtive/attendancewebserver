@@ -66,18 +66,23 @@ def record_attendace(uid):
         failure_feedback("no ongoing class")
     elif not student:
         logging.info('student not found')
-        failure_feedback("student not registered")
-    elif student:
+        new_student = Students.objects.create(serial_number=uid, name="student", npm=1000000000)
+        new_student.name="student {}".format(student.id)
+        new_student.save()
+        student = Students.objects.filter(serial_number=uid)
+        logging.info('{} registered', student.name)
+    
+    if class_ and student:
         logging.info(class_[0])
         logging.info(student[0])
         GPIO.output(4, GPIO.HIGH)
-        success_feedback(student[0].name[:14], str(student[0].npm))
         attendance = Attendance.objects.create(
             student=student[0],
             class_attend=class_[0],
             time_attend=date_time_now.strftime("%Y-%m-%d %H:%M:%S")
         )
         logging.info('attendance created successfully')
+        success_feedback(student[0].name[:14], str(student[0].npm))
     GPIO.output(4, GPIO.LOW)
 
 def success_feedback(message_first_line="", message_second_line=""):
