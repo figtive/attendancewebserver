@@ -11,7 +11,7 @@ import subprocess
 import re
 import time as sys_time
 import RPi.GPIO as GPIO
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 from index.models import Attendance, Students, Classes
 
@@ -57,7 +57,7 @@ def record_attendace(uid):
     time_now = date_time_now.time()
 
     student = Students.objects.filter(serial_number=uid)
-    class_ = Classes.objects.filter(day=weekday, time_start__lte=time_now, time_end__gte=time_now)
+    class_ = Classes.objects.filter(day=weekday, time_start__lte=time_now+timedelta(10,0), time_end__gte=time_now)
 
     logging.info('attempt to record attendance at {}'.format(date_time_now))
 
