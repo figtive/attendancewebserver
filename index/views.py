@@ -1,11 +1,11 @@
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
-from .models import Attendance, Courses
+from .models import Attendance, Course
 
 def index(request):
-    attendees = Attendance.objects.all()
+    attendances = Attendance.objects.all()
     return render(request, 'index.html', {
-        'attendees' :attendees,
+        'attendances': attendances,
     })
 
 
