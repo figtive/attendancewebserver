@@ -10,39 +10,51 @@ DAYS_OF_WEEK = (
     ('6', 'Sunday'),
 )
 
-class Students(models.Model):
+class Student(models.Model):
     serial_number = models.CharField(max_length=50)
-    name = models.CharField(max_length=30)
+    name = models.CharField(max_length=50)
     npm = models.IntegerField()
     def __str__(self):
-        return 'Student: ' + self.name
+        return 'Student {}'.format(self.name)
 
 class Lecturer(models.Model):
-    lecturer_uid = models.CharField(max_length=50)
-    lecturer_name = models.CharField(max_length=30)
-    def __str__(self):
-        return 'Lecturer: ' + str(self.lecturer_name)
-
-class Courses(models.Model):
+    serial_number = models.CharField(max_length=50)
     name = models.CharField(max_length=50)
-    course_id = models.CharField(max_length=30)
-    lecturer = models.ForeignKey(Lecturer,on_delete=models.CASCADE)
-
     def __str__(self):
-        return 'Course: ' + self.name
+        return 'Lecturer {}'.format(self.name)
 
-class Classes(models.Model):
-    class_name = models.ForeignKey(Courses, on_delete=models.CASCADE)
+class Course(models.Model):
+    code = models.CharField(max_length=30)
+    name = models.CharField(max_length=50)
+    lecturer = models.ForeignKey(Lecturer, on_delete=models.CASCADE)
+    def __str__(self):
+        return 'Course {}'.format(self.name)
+
+class CourseClass(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
     day = models.CharField(max_length=1, choices=DAYS_OF_WEEK)
-    time_start = models.TimeField()
-    time_end = models.TimeField()
-
+    start_time = models.TimeField()
+    end_time = models.TimeField()
     def __str__(self):
-        return 'Class: {} {}'.format(self.class_name, self.day)
+        return 'Class {} {}'.format(self.course.name, DAYS_OF_WEEK[int(self.day)][1])
+
+class Meeting(models.Model):
+    course_class = models.ForeignKey(CourseClass, on_delete=models.CASCADE)
+    start_date_time = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return 'Meeting {} {}'.format(self.course_class.course.name,
+            self.start_date_time)
+
+class Record(models.Model):
+    date_time = models.DateTimeField(auto_now_add=True)
+    payload = models.TextField()
+    def __str__(self):
+        return 'Record {} {}'.format(self.date_time, self.payload)
 
 class Attendance(models.Model):
-    student = models.ForeignKey(Students, on_delete=models.CASCADE)
-    class_attend = models.ForeignKey(Classes, on_delete=models.CASCADE)
-    time_attend = models.DateTimeField(auto_now=True)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE)
+    record = models.ForeignKey(Record, on_delete=models.CASCADE)
     def __str__(self):
-        return 'Attendance: ' + str(self.student) + ' at ' + str(self.class_attend)
+        return 'Attendance {} {} {}'.format(self.student.name, \
+            self.meeting.course_class.course.name, self.record.date_time)
