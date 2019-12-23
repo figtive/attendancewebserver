@@ -42,3 +42,6 @@ def showLecturer(request):
         "lecturers": lecturers
     })
 
+def importPage(request):
+    return render(request, 'importPage.html')
+

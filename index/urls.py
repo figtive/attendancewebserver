@@ -7,4 +7,5 @@ urlpatterns = [
     path('course/<str:course_code>/<str:pk>', views.showAttendance, name='show_attendance'),
     path('lecturer/<str:lecturer_npm>', views.showLecturerCourses, name='show_attendance'),
     path('lecturers', views.showLecturer, name='show_attendance'),
+    path('import', views.importPage, name='show_attendance'),
 ]
