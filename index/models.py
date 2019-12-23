@@ -12,8 +12,7 @@ DAYS_OF_WEEK = (
 
 MEETING_TYPE = (
     ('0', 'normal'),
-    ('1', 'substitute'),
-    ('2', 'additional')
+    ('1', 'substitute')
 )
 
 class Student(models.Model):
@@ -45,20 +44,20 @@ class CourseClass(models.Model):
         return 'Class {} {}'.format(self.course.name, \
             DAYS_OF_WEEK[int(self.day)][1])
 
-class Meeting(models.Model):
-    course_class = models.ForeignKey(CourseClass, on_delete=models.CASCADE)
-    start_date_time = models.DateTimeField(auto_now_add=True)
-    meeting_type = models.CharField(max_length=1, choices=MEETING_TYPE, \
-        default='0')
-    def __str__(self):
-        return 'Meeting {} {} {}'.format(self.course_class.course.name, \
-            MEETING_TYPE[int(self.meeting_type)][1], self.start_date_time)
-
 class Record(models.Model):
     date_time = models.DateTimeField(auto_now_add=True)
     payload = models.TextField()
     def __str__(self):
         return 'Record {} {}'.format(self.date_time, self.payload)
+
+class Meeting(models.Model):
+    course_class = models.ForeignKey(CourseClass, on_delete=models.CASCADE)
+    record = models.ForeignKey(Record, on_delete=models.CASCADE)
+    meeting_type = models.CharField(max_length=1, choices=MEETING_TYPE, \
+        default='0')
+    def __str__(self):
+        return 'Meeting {} {} {}'.format(self.course_class.course.name, \
+            MEETING_TYPE[int(self.meeting_type)][1], self.record.date_time)
 
 class Registration(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
