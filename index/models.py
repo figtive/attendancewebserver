@@ -1,18 +1,18 @@
 from django.db import models
 
 DAYS_OF_WEEK = (
-    ('0', 'Monday'),
-    ('1', 'Tuesday'),
-    ('2', 'Wednesday'),
-    ('3', 'Thursday'),
-    ('4', 'Friday'),
-    ('5', 'Saturday'),
-    ('6', 'Sunday'),
+    ('0', 'MON'),
+    ('1', 'TUE'),
+    ('2', 'WED'),
+    ('3', 'THU'),
+    ('4', 'FRI'),
+    ('5', 'SAT'),
+    ('6', 'SUN'),
 )
 
 MEETING_TYPE = (
-    ('0', 'normal'),
-    ('1', 'substitute')
+    ('0', 'Normal'),
+    ('1', 'Substitute')
 )
 
 class Student(models.Model):
@@ -51,7 +51,7 @@ class CourseClass(models.Model):
         unique_together = ["course", "day", "start_time"]
     def __str__(self):
         return 'Class {} {}'.format(self.course.name, \
-            DAYS_OF_WEEK[int(self.day)][1])
+            self.get_day_display())
 
 class Record(models.Model):
     date_time = models.DateTimeField(auto_now_add=True)
@@ -66,7 +66,7 @@ class Meeting(models.Model):
         default='0')
     def __str__(self):
         return 'Meeting {} {} {}'.format(self.course_class.course.name, \
-            MEETING_TYPE[int(self.meeting_type)][1], self.record.date_time)
+            self.get_meeting_type_display(), self.record.date_time)
 
 class Registration(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
