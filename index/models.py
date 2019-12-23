@@ -19,12 +19,17 @@ class Student(models.Model):
     serial_number = models.CharField(max_length=50)
     name = models.CharField(max_length=50)
     npm = models.IntegerField()
+    class Meta:
+        unique_together = ["npm"]
     def __str__(self):
         return 'Student {}'.format(self.name)
 
 class Lecturer(models.Model):
     serial_number = models.CharField(max_length=50)
     name = models.CharField(max_length=50)
+    npm = models.IntegerField()
+    class Meta:
+        unique_together = ["npm"]
     def __str__(self):
         return 'Lecturer {}'.format(self.name)
 
@@ -32,6 +37,8 @@ class Course(models.Model):
     code = models.CharField(max_length=30)
     name = models.CharField(max_length=50)
     lecturer = models.ForeignKey(Lecturer, on_delete=models.CASCADE)
+    class Meta:
+        unique_together = ["code"]
     def __str__(self):
         return 'Course {}'.format(self.name)
 
@@ -40,6 +47,8 @@ class CourseClass(models.Model):
     day = models.CharField(max_length=1, choices=DAYS_OF_WEEK)
     start_time = models.TimeField()
     end_time = models.TimeField()
+    class Meta:
+        unique_together = ["course", "day", "start_time"]
     def __str__(self):
         return 'Class {} {}'.format(self.course.name, \
             DAYS_OF_WEEK[int(self.day)][1])
