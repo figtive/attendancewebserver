@@ -36,14 +36,14 @@ class Lecturer(models.Model):
 class Course(models.Model):
     code = models.CharField(max_length=30)
     name = models.CharField(max_length=50)
-    lecturer = models.ForeignKey(Lecturer, on_delete=models.CASCADE)
+    lecturer = models.ForeignKey(Lecturer, on_delete=models.CASCADE, related_name="lecturer")
     class Meta:
         unique_together = ["code"]
     def __str__(self):
         return 'Course {}'.format(self.name)
 
 class CourseClass(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="course")
     day = models.CharField(max_length=1, choices=DAYS_OF_WEEK)
     start_time = models.TimeField()
     end_time = models.TimeField()
@@ -60,7 +60,7 @@ class Record(models.Model):
         return 'Record {} {}'.format(self.date_time, self.payload)
 
 class Meeting(models.Model):
-    course_class = models.ForeignKey(CourseClass, on_delete=models.CASCADE)
+    course_class = models.ForeignKey(CourseClass, on_delete=models.CASCADE, related_name="course_class")
     record = models.ForeignKey(Record, on_delete=models.CASCADE)
     meeting_type = models.CharField(max_length=1, choices=MEETING_TYPE, \
         default='0')
@@ -74,7 +74,7 @@ class Registration(models.Model):
 
 class Attendance(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE)
+    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="meeting")
     record = models.ForeignKey(Record, on_delete=models.CASCADE)
     def __str__(self):
         return 'Attendance {} {} {}'.format(self.student.name, \
