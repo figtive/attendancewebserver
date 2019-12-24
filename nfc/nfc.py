@@ -28,10 +28,29 @@ from index.models import *
 
 logging_format = "%(asctime)s: %(message)s"
 logging.basicConfig(format=logging_format, level=logging.INFO, datefmt="%H:%M:%S")
-new_lock = threading.Lock()
 
 def get_current_date_time():
     return timezone.localtime(timezone.now())
+
+class LcdLock:
+    WAIT_CHECK_INTERVAL = 0.1
+    def __init__(self):
+        self.queue = queue.Queue()
+        self.locked = False
+    def __enter__(self): 
+        self.queue.put(1)
+    def __exit__(self, a, b, c):
+        self.queue.get()
+    def set_locked(self):
+        self.locked = True
+        sys_time.sleep(0.1)
+    def set_free(self):
+        self.locked = False
+    def wait_empty(self):
+        while True:
+            if self.queue.empty() and not self.locked:
+                return
+            sys_time.sleep(LcdLock.WAIT_CHECK_INTERVAL)
 
 class SystemState:
     IDLE = 0
@@ -126,13 +145,9 @@ def start_nfc_poll_producer(queue_to_put):
         process.stderr.close()
         sys_time.sleep(.1)
 
-def start_nfc_poll_consumer(queue_to_read):
+def start_nfc_poll_consumer(queue_to_read, keypad, lcd, led_buzzer, system_state, lcd_lock):
     logging.info('nfc poll consumer started')
-    keypad = Keypad()
-    lcd = Lcd()
-    led_buzzer = LedBuzzer()
-    system_state = SystemState()
-    lcd.write(["attendance", "system"])
+    write_to_lcd_and_lock(lcd, ["attendance", "system"])
     while True:
         nfc_output_line = queue_to_read.get()
         uid_line_match = re.search("UID.*\\n", nfc_output_line)
@@ -140,78 +155,72 @@ def start_nfc_poll_consumer(queue_to_read):
             continue
         record = Record.objects.create(payload=uid_line_match.group())
         uid = re.sub('( |\\n)', '',  uid_line_match.group().split(':')[1])
-        logging.info("read uid {}".format(uid))#CHECKED
+        logging.info("read uid {}".format(uid))
         if system_state.is_idle():
             logging.info("system idle")
             lecturer = Lecturer.objects.all().filter(serial_number=uid)
             if not lecturer.exists():
-                logging.info("lecturer not found")#CHECKED
-                lcd.write(["invalid", "lecturer card"])
-                led_buzzer.trigger_failure()
+                logging.info("lecturer not found")
+                write_to_lcd_and_lock_failure(lcd, ["invalid", "lecturer card"], led_buzzer)
                 continue
             else:
                 logging.info("lecturer {} found".format(repr(lecturer[0])))
-                lcd.write(["0 normal", "1 substitute"])
-                class_input = keypad.read("01")
-                if class_input == "0":
+                meeting_type_input = choice_menu(lcd, lcd_lock, keypad, ["normal", "substitute"])
+                if meeting_type_input == "normal":
                     course_class = get_nearest_course_class_of_lectuerer(lecturer[0], record.get_date_time())
-                    if course_class is None:#CHECKED
-                        lcd.write(["no class", "found for today"])
-                        led_buzzer.trigger_failure()
+                    if course_class is None:
+                        write_to_lcd_and_lock_failure(lcd, ["no class", "found for today"], led_buzzer)
                         continue
                     meeting = Meeting.objects.create( \
                         course_class=course_class, \
                         record=record, meeting_type="0")
-                else:#CHECKED
-                    course = choice_menu(lcd, keypad, \
+                else:
+                    course = choice_menu(lcd, lcd_lock, keypad, \
                         Course.objects.all().filter(lecturer=lecturer[0]), lambda e: e.name)
-                    course_class = choice_menu(lcd, keypad, \
+                    course_class = choice_menu(lcd, lcd_lock, keypad, \
                         CourseClass.objects.all().filter(course=course), \
                         lambda e: "{} {}".format(e.get_day_display(), str(e.start_time)))
                     meeting = Meeting.objects.create( \
                         course_class=course_class, \
                         record=record, meeting_type="1")
                 logging.info("meeting {} created".format(repr(meeting)))
-                lcd.write(["{} {}".format(meeting.course_class.course.name[:12], meeting.course_class.get_day_display()), \
-                    "{} {}".format(meeting.course_class.start_time, meeting.get_meeting_type_display()[:4])])
-                led_buzzer.trigger_success()
+                write_to_lcd_and_lock_success(lcd, ["{} {}".format(meeting.course_class.course.name[:12], meeting.course_class.get_day_display()), \
+                    "{} {}".format(meeting.course_class.start_time, meeting.get_meeting_type_display()[:4])], led_buzzer)
                 system_state.set_on_going_class(meeting, record.get_date_time() + \
                     (datetime.combine(date.min, course_class.end_time) - datetime.combine(date.min, course_class.start_time)))
         else:
             logging.info("system have on going class")
             lecturer = Lecturer.objects.all().filter(serial_number=uid)
-            if lecturer.exists():#CHECKED
+            if lecturer.exists():
                 logging.info("lecturer {} found".format(repr(lecturer[0])))
                 logging.info("ending class")
-                lcd.write(["class ended"])
+                write_to_lcd_and_lock(lcd, ["class ended"])
                 system_state.set_idle()
                 continue
             student = Student.objects.all().filter(serial_number=uid)
             if not student.exists():
                 logging.info("student not found")
-                npm = int(input_menu(lcd, keypad, "enter npm", 10))
+                npm = int(input_menu(lcd, lcd_lock, keypad, "enter npm", 10))
                 student = Student.objects.create(serial_number=uid, name="", npm=npm)
                 student.name = "Stud #{}".format(student.id)
                 student.save()
                 logging.info("student {} created".format(repr(student)))
                 attendance = Attendance(student=student, meeting=system_state.get_meeting(), record=record)
                 logging.info("attendance {} created".format(repr(attendance)))
-                lcd.write([student.name, str(student.npm)])
-                led_buzzer.trigger_success()
+                write_to_lcd_and_lock_success(lcd, [student.name, str(student.npm)], led_buzzer)
             else:
                 logging.info("student {} found".format(repr(student[0])))
                 current_meeting = system_state.get_meeting()
                 if Attendance.objects.all().filter(student=student[0], meeting=current_meeting).exists():
                     logging.info("duplicate attendance")
-                    lcd.write([student[0].name, "duplicate attend"])
-                    led_buzzer.trigger_failure()
+                    write_to_lcd_and_lock_failure(lcd, [student[0].name, "duplicate attend"], led_buzzer)
                 else:
                     attendance = Attendance.objects.create(student=student[0], meeting=current_meeting, record=record)
                     logging.info("attendance {} created".format(repr(attendance)))
-                    lcd.write([student[0].name, str(student[0].npm)])
-                    led_buzzer.trigger_success()
+                    write_to_lcd_and_lock_success(lcd, [student[0].name, str(student[0].npm)], led_buzzer)
 
-def choice_menu(lcd, keypad, choices, display_func=lambda e: e):
+def choice_menu(lcd, lcd_lock, keypad, choices, display_func=lambda e: e):
+    lcd_lock.set_locked()
     selection = list(enumerate(choices))
     submenu_count = math.ceil(len(choices)/2)
     current_submenu_index = 0
@@ -222,7 +231,7 @@ def choice_menu(lcd, keypad, choices, display_func=lambda e: e):
         first_line = "{} {}".format(selection[index][0], display_func(selection[index][1]))
         second_line = "{} {}".format(selection[index+1][0], display_func(selection[index+1][1])) \
             if index + 1 < len(choices) else ""
-        lcd.write([first_line, second_line])
+        write_to_lcd(lcd, [first_line, second_line])
         keypad_input = keypad.read(keypad_keys)
         if keypad_input == "E" and current_submenu_index + 1 < submenu_count:
             current_submenu_index += 1
@@ -231,21 +240,24 @@ def choice_menu(lcd, keypad, choices, display_func=lambda e: e):
         if keypad_input in string.digits:
             result = choices[int(keypad_input)]
             logging.info("choice menu selects {}".format(result))
+            lcd_lock.set_free()
             return result
 
-def input_menu(lcd, keypad, prompt_message, input_length):
+def input_menu(lcd, lcd_lock, keypad, prompt_message, input_length):
+    lcd_lock.set_locked()
     answer=""
-    lcd.write([prompt_message])
+    write_to_lcd(lcd, [prompt_message])
     while True:
         keypad_input = keypad.read(string.digits + "BE")
         if keypad_input in string.digits and len(answer) < 10:
             answer += keypad_input
-            lcd.write([prompt_message, answer])
+            write_to_lcd(lcd, [prompt_message, answer])
         elif keypad_input == "B":
             answer = answer[:-1]
-            lcd.write([prompt_message, answer])
+            write_to_lcd(lcd, [prompt_message, answer])
         elif keypad_input == "E" and len(answer) == input_length:
             logging.info("input menu inputs {}".format(answer))
+            lcd_lock.set_free()
             return answer
 
 def get_nearest_course_class_of_lectuerer(lecturer, date_time):
@@ -263,150 +275,45 @@ def get_nearest_course_class_of_lectuerer(lecturer, date_time):
     logging.info("get nearest course class {}".format(repr(result)))
     return result
 
+def write_to_lcd(lcd, message):
+    lcd.write(message)
+
+def write_to_lcd_and_lock(lcd, message):
+    with lcd_lock:
+        lcd.write(message)
+        sys_time.sleep(5)
+
+def write_to_lcd_and_lock_success(lcd, message, led_buzzer):
+    led_buzzer.trigger_success()
+    write_to_lcd_and_lock(lcd, message)
+
+def write_to_lcd_and_lock_failure(lcd, message, led_buzzer):
+    led_buzzer.trigger_failure()
+    write_to_lcd_and_lock(lcd, message)
+
+def display_date_time(lcd, lcd_lock):
+    while True:
+        lcd_lock.wait_empty()
+        write_to_lcd(lcd, get_current_date_time().strftime("%Y-%m-%d %H:%M:%S").split(' '))
+        sys_time.sleep(0.5)
+
 if __name__ == "__main__":
     logging.info("nfc main func started")
+
     nfc_reader_output_queue = queue.Queue()
+    keypad = Keypad()
+    lcd = Lcd()
+    led_buzzer = LedBuzzer()
+    system_state = SystemState()
+    lcd_lock = LcdLock()
 
     threads = []
     threads.append(threading.Thread(target=start_nfc_poll_producer, \
         args=(nfc_reader_output_queue,)))
     threads.append(threading.Thread(target=start_nfc_poll_consumer, \
-        args=(nfc_reader_output_queue,)))
+        args=(nfc_reader_output_queue,keypad,lcd,led_buzzer,system_state,lcd_lock)))
+    threads.append(threading.Thread(target=display_date_time, args=(lcd, lcd_lock)))
     
     for func in [lambda t: t.start(), lambda t: t.join()]:
         for thread in threads:
             func(thread)
-
-# =============================================================================
-# PREVIOUS CODE FOR NFC.PY
-# =============================================================================
-
-# import os
-# import sys
-# import django
-# import threading
-# import logging
-# import subprocess
-# import re
-# import time as sys_time
-# from datetime import datetime, time, timedelta
-# import RPi.GPIO as GPIO
-# from asynchronousfilereader import AsynchronousFileReader
-
-# os.environ["BASE_DIR"] = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# sys.path.insert(0, os.environ["BASE_DIR"])
-# os.environ.setdefault("DJANGO_SETTINGS_MODULE", "attendancewebserver.settings")
-# django.setup()
-
-# from index.models import Attendance, Student, Classes
-
-# logging_format = "%(asctime)s: %(message)s"
-# logging.basicConfig(format=logging_format, level=logging.INFO, datefmt="%H:%M:%S")
-# new_lock = threading.Lock()
-
-# def nfc():
-#     logging.info('nfc started')
-#     while True:
-#         logging.info('waiting for nfc-poll')
-#         proc = subprocess.Popen(['nfc-poll'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-#         out, err = proc.communicate()
-#         item = out.decode('utf-8')
-#         logging.info('got item {}'.format(item))
-        
-#         match_error = re.search("error", item, re.IGNORECASE)
-#         if match_error is not None:
-#             logging.error("nfc error, retrying in 5s")
-#             failure_feedback("nfc error", "retrying in 5s")
-#             sys_time.sleep(2)
-#             continue
-
-#         match = re.search("UID.*\\n ", item)
-#         match_timeout = re.search("nfc_initiator_poll_target: Success", item)
-        
-#         if match_timeout is not None:
-#             logging.info('timeout')
-#         elif match is not None:
-#             match_pattern = re.sub('( |\\n)', '',  match.group().split(':')[1])
-#             logging.info('UID found {}'.format(match_pattern))
-#             threading.Thread(target=record_attendace, args=(match_pattern,)).start()
-#         else:
-#             failure_feedback("cant read UID of card")
-#     logging.info('nfc ended')
-
-# def record_attendace(uid):
-#     GPIO.setmode(GPIO.BCM)
-#     GPIO.setwarnings(False)
-#     GPIO.setup(4,GPIO.OUT)
-#     date_time_now = datetime.now()
-#     weekday = date_time_now.weekday()
-#     time_now = date_time_now.time()
-
-#     student = Students.objects.filter(serial_number=uid)
-#     class_ = Classes.objects.filter(day=weekday, time_start__lte=time_now+timedelta(10,0), time_end__gte=time_now)
-
-#     logging.info('attempt to record attendance at {}'.format(date_time_now))
-
-#     if not class_:
-#         logging.info('no class')
-#         failure_feedback("no ongoing class")
-#     elif not student:
-#         logging.info('student not found')
-#         new_student = Students.objects.create(serial_number=uid, name="student", npm=1000000000)
-#         new_student.name="student {}".format(student.id)
-#         new_student.save()
-#         student = Students.objects.filter(serial_number=uid)
-#         logging.info('{} registered', student.name)
-    
-#     if class_ and student:
-#         logging.info(class_[0])
-#         logging.info(student[0])
-#         GPIO.output(4, GPIO.HIGH)
-#         attendance = Attendance.objects.create(
-#             student=student[0],
-#             class_attend=class_[0],
-#             time_attend=date_time_now.strftime("%Y-%m-%d %H:%M:%S")
-#         )
-#         logging.info('attendance created successfully')
-#         success_feedback(student[0].name[:14], str(student[0].npm))
-#     GPIO.output(4, GPIO.LOW)
-
-# def success_feedback(message_first_line="", message_second_line=""):
-#     if new_lock.locked():
-#         new_lock.release()
-#     try:
-#         with new_lock:
-#             subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), message_first_line, message_second_line])
-#             subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'led_buzzer.py'), "success"])
-#             sys_time.sleep(3)
-#     except RuntimeError:
-#         logging.info("ignoring unlock released lock error")
-
-# def failure_feedback(message_first_line="", message_second_line=""):
-#     if new_lock.locked():
-#         new_lock.release()
-#     try:
-#         with new_lock:
-#             subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), message_first_line, message_second_line])
-#             subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'led_buzzer.py'), "failure"])
-#             sys_time.sleep(3)
-#     except RuntimeError:
-#         logging.info("ignoring unlock released lock error")
-
-# def display_date_time_lcd():
-#     logging.info("lcd display time started")
-#     while True:
-#         try:
-#             with new_lock:
-#                 current_date, current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S").split(' ')
-#                 subprocess.run(['python', os.path.join(os.environ.get("BASE_DIR"), 'lcd.py'), current_date, current_time])
-#             sys_time.sleep(0.9)
-#         except RuntimeError:
-#             logging.info("ignoring unlock released lock error")
-#     logging.info("lcd display time ended")
-
-# nfc_thread = threading.Thread(target=nfc)
-# lcd_thread = threading.Thread(target=display_date_time_lcd)
-# nfc_thread.start()
-# lcd_thread.start()
-# nfc_thread.join()
-# lcd_thread.join()
