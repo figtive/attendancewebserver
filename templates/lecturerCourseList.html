@@ -1,0 +1,43 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <title>Attendance System</title>
+  </head>
+    {% block body %}
+        {% include 'navbar.html' %}
+    <div class="container" style="margin-top:5rem;">
+                <nav aria-label="breadcrumb">
+      <ol class="breadcrumb" style="background: white!important;margin:0;">
+          <li class="breadcrumb-item"><a href="{% url 'show_lecturers' %}">Lecturers</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ lecturer.npm }} - {{ lecturer.name }}</li>
+      </ol>
+    </nav>
+      <h2>{{ lecturer.name }} - {{ lecturer.npm }}</h2>
+      <table class="table">
+        <thead>
+          <tr>
+              <th>No.</th>
+              <th scope="col">Course ID</th>
+              <th scope="col">Course Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for course in courses %}
+              <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ course.code}}</td>
+                  <td>{{ course.name }}</td>
+                <td><a href="{% url 'show_meeting' course_code=course.code %}"> See Class Meeting History</a></td>
+              </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endblock %}
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  </body>
+</html>
