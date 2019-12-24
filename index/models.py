@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 DAYS_OF_WEEK = (
     ('0', 'MON'),
@@ -50,12 +51,14 @@ class CourseClass(models.Model):
     class Meta:
         unique_together = ["course", "day", "start_time"]
     def __str__(self):
-        return 'Class {} {}'.format(self.course.name, \
-            self.get_day_display())
+        return 'Class {} {} {}-{}'.format(self.course.name, \
+            self.get_day_display(), self.start_time, self.end_time)
 
 class Record(models.Model):
     date_time = models.DateTimeField(auto_now_add=True)
     payload = models.TextField()
+    def get_date_time(self):
+        return timezone.localtime(self.date_time)
     def __str__(self):
         return 'Record {} {}'.format(self.date_time, self.payload)
 
