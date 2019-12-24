@@ -1,0 +1,23 @@
+
+        <nav class="navbar fixed-top navbar-expand-lg navbar-light bg-light">
+  <a class="navbar-brand" href="#" style="cursor: initial!important;">Attendance Web Server</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarText" aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navbarText">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item {% if 'lecturer' in request.path %} active{% endif %}">
+        <a class="nav-link" href="{% url 'show_lecturers' %}"> Lecturers </a>
+      </li>
+      <li class="nav-item {% if 'course' in request.path %} active{% endif %}" >
+        <a class="nav-link" href="{% url 'show_courses_list' %}">Courses</a>
+      </li>
+      <li class="nav-item {% if 'import' in request.path %} active{% endif %}">
+        <a class="nav-link" href="{% url 'import_page' %}">Import </a>
+      </li>
+    </ul>
+    <span class="navbar-text">
+      Welcome, {{ user.username }}
+    </span>
+  </div>
+</nav>

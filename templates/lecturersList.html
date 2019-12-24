@@ -6,7 +6,8 @@
     <title>Attendance System</title>
   </head>
     {% block body %}
-    <div class="container" style="margin-top:3rem;">
+        {% include 'navbar.html' %}
+    <div class="container" style="margin-top:5rem;">
       <h2>Lecturer List</h2>
       <table class="table">
         <thead>
@@ -22,7 +23,7 @@
                   <td>{{ forloop.counter }}</td>
                   <td>{{ lecturer.npm }}</td>
                   <td>{{ lecturer.name }}</td>
-                <td><a href="/lecturer/{{ lecturer.npm }}"> See Courses</a></td>
+                <td><a href="{% url 'show_lecturer_course' lecturer_npm=lecturer.npm %}"> See Courses</a></td>
               </tr>
           {% endfor %}
         </tbody>
