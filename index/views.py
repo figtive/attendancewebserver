@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
-from .models import Attendance, Course, Meeting,Lecturer
+from .models import Attendance, Course, Meeting,Lecturer, CourseClass
 from django.http import HttpResponse
 
 def index(request):
@@ -44,4 +44,12 @@ def showLecturer(request):
 
 def importPage(request):
     return render(request, 'importPage.html')
+
+def showCoursesList(request):
+    courses = Course.objects.all()
+    course_class = CourseClass.objects.all()
+    return render(request, 'coursesList.html', {
+        "courses": courses,
+        "course_class": course_class,
+    })
 

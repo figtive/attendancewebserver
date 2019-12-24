@@ -8,34 +8,34 @@
     {% block body %}
         {% include 'navbar.html' %}
     <div class="container" style="margin-top:5rem;">
-        <nav aria-label="breadcrumb">
-      <ol class="breadcrumb" style="background: white!important;margin:0;">
-        <li class="breadcrumb-item"><a href="{% url 'show_courses_list' %}">Courses</a></li>
-        <li class="breadcrumb-item active" aria-current="page">{{ course.code }}- {{ course.name }}</li>
-      </ol>
-    </nav>
-      <h1>{{ course.code }} - {{ course.name }}</h1>
-        <h6> Lecturer : {{ course.lecturer.npm }} - {{ course.lecturer.name }}</h6>
+      <h2>Courses List</h2>
       <table class="table">
         <thead>
           <tr>
               <th>No.</th>
-              <th scope="col">Meeting type</th>
-              <th scope="col">Date</th>
+              <th scope="col">Course ID</th>
+              <th scope="col">Course Name</th>
+              <th scope="col">Lecturer Name</th>
+              <th scope="col">Class Schedule</th>
+
           </tr>
         </thead>
         <tbody>
-          {% for meeting in meetings %}
+          {% for course in courses %}
               <tr>
                   <td>{{ forloop.counter }}</td>
-                  {% if meeting.meeting_type == "0" %}
-                    <td> Normal </td>
-                  {% else %}
-                      <td> Substitute </td>
-                  {% endif %}
-                  <td>{{ meeting.record.date_time }}</td>
-                  <td> <a href="{% url 'show_attendance' course_code=course.code pk=meeting.pk %}"> See Attendance </a></td>
-
+                  <td>{{ course.code }}</td>
+                  <td>{{ course.name }}</td>
+                  <td>{{ course.lecturer.name }}</td>
+                  <td>
+                      {% for class in course_class %}
+                          {% if course.code == class.course.code %}
+                            <span>{{ class.get_day_display }}, {{ class.start_time }} - {{ class.end_time }}</span>
+                              <br/>
+                          {% endif %}
+                      {% endfor %}
+                  </td>
+                <td><a href="{% url 'show_meeting' course_code=course.code %}"> See Course Meeting History</a></td>
               </tr>
           {% endfor %}
         </tbody>
