@@ -114,7 +114,7 @@ class Keypad:
     }
     def __init__(self):
         self.input_handler = subprocess.check_output( \
-            ["bash", "nfc/get_keypad_input.sh"]).decode("utf-8").strip()
+            ["bash", os.path.join(os.environ["BASE_DIR"], "nfc", "get_keypad_input.sh")]).decode("utf-8").strip()
         self.device = evdev.InputDevice('/dev/input/{}'.format(self.input_handler))
     def read(self, keys):
         key_codes = list(map(lambda k: Keypad.MAPPING[k], keys))
