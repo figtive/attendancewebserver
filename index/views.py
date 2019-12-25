@@ -44,7 +44,26 @@ def showLecturer(request):
     })
 
 def importPage(request):
-    return render(request, 'importPage.html')
+    response = {}
+    if request.method == 'POST':
+        print(request.POST["type"])
+        print(request.FILES)
+        if request.FILES['document'] is not None:
+            uploaded_file = request.FILES['document']
+            data = uploaded_file.read().decode("utf-8").split('\n')[1:]
+            uploaded_name = uploaded_file.name
+            if request.POST["type"] == 'Student':
+                message = upload_students(data)
+            elif request.POST["type"] == 'Lecturer':
+                message = upload_lecturers(data)
+            elif request.POST["type"] == 'Course':
+                message = upload_courses(data)
+            elif request.POST["type"] == 'Course Class':
+                message = upload_course_classes(data)
+            elif request.POST["type"] == 'Registration':
+                message = upload_registrations(data)
+        response["message"] = message
+    return render(request, 'importPage.html', response)
 
 def showCoursesList(request):
     courses = Course.objects.all()
@@ -76,40 +95,19 @@ def export_csv(request):
             student_to_attendance_count[attendance.student.npm] = student_to_attendance_count.get(attendance.student.npm, 0) + 1
         # fill in course
         for student_npm, attendance_count in student_to_attendance_count.items():
-            npm = attendance.student.npm
-            name = attendance.student.name
-            attend = student_to_attendance_count[attendance.student.npm]
+            student = Student.objects.get(npm=student_npm)
+            npm = student_npm
+            name = student.name
+            attend = attendance_count
             absent = total_meetings - attend
             attend_percentage = 100.0 * attend / total_meetings
 
-            # new_courses = Course.objects.all().filter(code=course.code)
-            student = Student.objects.all().filter(npm=npm)[0]
             is_registered = Registration.objects.all().filter(course=course,student=student).exists()
             registered = 'Y' if is_registered else 'N'
     
             writer.writerow([course_name,npm,name,attend,absent,total_meetings,attend_percentage,registered])
 
     return response
-
-
-def upload_csv(request):
-    if request.method == 'POST':
-        print(request.FILES)
-        if request.FILES['document'] is not None:
-            uploaded_file = request.FILES['document']
-            data = uploaded_file.read().decode("utf-8").split('\n')[1:]
-            uploaded_name = uploaded_file.name
-            if uploaded_name == 'student.csv':
-                upload_students(data)
-            elif uploaded_name == 'lecturer.csv':
-                upload_lecturers(data)
-            elif uploaded_name == 'course.csv':
-                upload_courses(data)
-            elif uploaded_name == 'courseclass.csv':
-                upload_course_classes(data)
-            elif uploaded_name == 'registration.csv':
-                upload_registrations(data)       
-    return render(request,'upload.html')
 
 def upload_students(data):
     print('uploading students')
@@ -132,6 +130,7 @@ def upload_students(data):
                 serial_number=new_serial_number, name=new_name
             )
     print('upload students finished')
+    return "upload students finished"
 
 def upload_lecturers(data):
     print('uploading lecturers')
@@ -154,6 +153,7 @@ def upload_lecturers(data):
                 serial_number=new_serial_number, name=new_name
             )
     print('upload lecturers finished')
+    return "upload lecturers finished"
 
 def upload_courses(data):
     print('uploading courses')
@@ -183,6 +183,7 @@ def upload_courses(data):
                     name=new_name,lecturer=new_lecturer
                 )
     print('upload courses finished')
+    return "upload courses finished"
 
 def upload_course_classes(data):
     print('uploading course classes')
@@ -221,6 +222,7 @@ def upload_course_classes(data):
                     end_time=new_end_time
                 )
     print('upload course classes finished')
+    return "upload course classes finished"
 
 def upload_registrations(data):
     print('uploading registrations')
@@ -247,3 +249,4 @@ def upload_registrations(data):
         except Registration.DoesNotExist:
             Registration.objects.create(course=new_course,student=new_student)
     print('upload registrations finished')
+    return "upload registrations finished"

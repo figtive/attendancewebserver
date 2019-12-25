@@ -13,7 +13,10 @@
         <a class="nav-link" href="{% url 'show_courses_list' %}">Courses</a>
       </li>
       <li class="nav-item {% if 'import' in request.path %} active{% endif %}">
-        <a class="nav-link" href="{% url 'import_page' %}">Import </a>
+        <a class="nav-link" href="{% url 'import_page' %}">Import</a>
+      </li>
+      <li class="nav-item {% if 'export' in request.path %} active{% endif %}">
+        <a class="nav-link" href="{% url 'export_csv' %}">Export</a>
       </li>
     </ul>
     <span class="navbar-text">
