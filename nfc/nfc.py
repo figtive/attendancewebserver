@@ -45,6 +45,12 @@ django.setup()
 from django.utils import timezone
 from index.models import *
 
+LCD_RS_PIN = 37
+LCD_E_PIN = 35
+LCD_DATA_PINS = [40, 38, 36, 32, 33, 31, 29, 23]
+GREEN_LED_AND_BUZZER_PIN = 10
+RED_LED_PIN = 12
+
 logging_format = "%(asctime)s: %(message)s"
 logging.basicConfig(format=logging_format, level=logging.INFO, datefmt="%H:%M:%S")
 
@@ -126,7 +132,8 @@ class Keypad:
         "8": "KEY_KP8",
         "9": "KEY_KP9",
         "B": "KEY_BACKSPACE", # backspace
-        "E": "KEY_KPENTER" # enter
+        "E": "KEY_KPENTER", # enter
+        "-": "KEY_KPMINUS"
     }
     REVERSE_MAPPING = {
         'KEY_KP0': '0',
@@ -140,7 +147,8 @@ class Keypad:
         'KEY_KP8': '8',
         'KEY_KP9': '9',
         'KEY_BACKSPACE': 'B',
-        'KEY_KPENTER': 'E'
+        'KEY_KPENTER': 'E',
+        "KEY_KPMINUS": "-"
     }
     def __init__(self):
         self.input_handler = subprocess.check_output( \
@@ -153,6 +161,7 @@ class Keypad:
                 _, _, pressed_key, direction = \
                     parse.parse("key event at {}, {} ({}), {}", \
                     str(evdev.categorize(event)))
+                print(pressed_key, direction)
 
                 if direction == "up" and pressed_key in key_codes:
                     return Keypad.REVERSE_MAPPING[pressed_key]
@@ -207,15 +216,24 @@ def start_nfc_poll_consumer(queue_to_read, keypad, lcd, led_buzzer, system_state
                     meeting = Meeting.objects.create( \
                         course_class=course_class, \
                         record=record, meeting_type="0")
-                else:
+                elif meeting_type_input == "substitute":
                     course = choice_menu(lcd, lcd_lock, keypad, \
                         Course.objects.all().filter(lecturer=lecturer[0]), lambda e: e.name)
+                    if course is None:
+                        logging.info("selection cancelled")
+                        continue
                     course_class = choice_menu(lcd, lcd_lock, keypad, \
                         CourseClass.objects.all().filter(course=course), \
                         lambda e: "{} {}".format(e.get_day_display(), str(e.start_time)))
+                    if course_class is None:
+                        logging.info("selection cancelled")
+                        continue
                     meeting = Meeting.objects.create( \
                         course_class=course_class, \
                         record=record, meeting_type="1")
+                elif meeting_type_input is None:
+                    logging.info("selection cancelled")
+                    continue
                 logging.info("meeting {} created".format(repr(meeting)))
                 write_to_lcd_and_lock_success(lcd, [
                     "{} {}".format(meeting.course_class.course.name[:12], meeting.course_class.get_day_display()), \
@@ -236,8 +254,15 @@ def start_nfc_poll_consumer(queue_to_read, keypad, lcd, led_buzzer, system_state
             student = Student.objects.all().filter(serial_number=uid)
             if not student.exists():
                 logging.info("student not found")
-                npm = int(input_menu(lcd, lcd_lock, keypad, "enter npm", 10))
-                student = Student.objects.create(serial_number=uid, name="", npm=npm)
+                npm = input_menu(lcd, lcd_lock, keypad, "enter npm", 10)
+                if npm is None:
+                    logging.info("selection cancelled")
+                    continue
+                if Student.objects.all().filter(npm = int(npm)).exists():
+                    write_to_lcd_and_lock_failure(lcd, [npm, "already exist"], led_buzzer)
+                    logging.info("student with npm {} already exist".format(npm))
+                    continue
+                student = Student.objects.create(serial_number=uid, name="", npm=int(npm))
                 student.name = "Stud #{}".format(student.id)
                 student.save()
                 logging.info("student {} created".format(repr(student)))
@@ -263,7 +288,7 @@ def choice_menu(lcd, lcd_lock, keypad, choices, display_func=lambda e: e):
     selection = list(enumerate(choices))
     submenu_count = math.ceil(len(choices)/2)
     current_submenu_index = 0
-    keypad_keys = "EB" + \
+    keypad_keys = "-EB" + \
         ''.join(list(map(lambda n: str(n),list(range(min(10, len(choices)))))))
     while True:
         index = current_submenu_index*2
@@ -276,6 +301,9 @@ def choice_menu(lcd, lcd_lock, keypad, choices, display_func=lambda e: e):
             current_submenu_index += 1
         if keypad_input == "B" and current_submenu_index - 1 >= 0:
             current_submenu_index -= 1
+        if keypad_input == "-":
+            lcd_lock.set_free()
+            return None
         if keypad_input in string.digits:
             result = choices[int(keypad_input)]
             logging.info("choice menu selects {}".format(result))
@@ -290,7 +318,7 @@ def input_menu(lcd, lcd_lock, keypad, prompt_message, input_length):
     answer=""
     write_to_lcd(lcd, [prompt_message])
     while True:
-        keypad_input = keypad.read(string.digits + "BE")
+        keypad_input = keypad.read(string.digits + "-BE")
         if keypad_input in string.digits and len(answer) < 10:
             answer += keypad_input
             write_to_lcd(lcd, [prompt_message, answer])
@@ -301,6 +329,9 @@ def input_menu(lcd, lcd_lock, keypad, prompt_message, input_length):
             logging.info("input menu inputs {}".format(answer))
             lcd_lock.set_free()
             return answer
+        elif keypad_input == "-":
+            lcd_lock.set_free()
+            return None
 
 def get_nearest_course_class_of_lectuerer(lecturer, date_time):
     '''
@@ -348,8 +379,8 @@ if __name__ == "__main__":
 
     nfc_reader_output_queue = queue.Queue()
     keypad = Keypad()
-    lcd = Lcd()
-    led_buzzer = LedBuzzer()
+    lcd = Lcd(LCD_RS_PIN, LCD_E_PIN, LCD_DATA_PINS)
+    led_buzzer = LedBuzzer(GREEN_LED_AND_BUZZER_PIN, RED_LED_PIN)
     system_state = SystemState()
     lcd_lock = LcdLock()
 

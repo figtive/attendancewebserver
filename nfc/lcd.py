@@ -14,17 +14,19 @@
 
 from RPLCD import CharLCD
 import RPi.GPIO as GPIO
+import threading
 
 class Lcd:
-    def __init__(self):
+    def __init__(self, rs_pin, e_pin, data_pins):
         GPIO.setwarnings(False)
-        self.lcd = CharLCD(cols=16, rows=2, pin_rs=37, pin_e=35, \
-            pins_data=[40, 38, 36, 32, 33, 31, 29, 23] , \
-            numbering_mode=GPIO.BOARD)
+        self.lcd = CharLCD(cols=16, rows=2, pin_rs=rs_pin, pin_e=e_pin, \
+            pins_data=data_pins , numbering_mode=GPIO.BOARD)
         self.lcd.clear()
+        self.lock = threading.Lock()
     def write(self, lines):
-        self.lcd.clear()
-        self.lcd.write_string(lines[0][:16].upper())
-        if len(lines) == 2:
-            self.lcd.cursor_pos = (1, 0) 
-            self.lcd.write_string(lines[1][:16].upper())
+        with self.lock:
+            self.lcd.clear()
+            self.lcd.write_string(lines[0][:16].upper())
+            if len(lines) == 2:
+                self.lcd.cursor_pos = (1, 0) 
+                self.lcd.write_string(lines[1][:16].upper())

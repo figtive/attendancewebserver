@@ -17,22 +17,21 @@ import RPi.GPIO as GPIO
 import time
 
 class LedBuzzer:
-    SUCCESS_PIN = 10
-    FAILURE_PIN = 12
-
-    def __init__(self):
+    def __init__(self, success_pin, failure_pin):
+        self.success_pin = success_pin
+        self.failure_pin = failure_pin
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(LedBuzzer.SUCCESS_PIN, GPIO.OUT)
-        GPIO.setup(LedBuzzer.FAILURE_PIN, GPIO.OUT)
+        GPIO.setup(self.success_pin, GPIO.OUT)
+        GPIO.setup(self.failure_pin, GPIO.OUT)
     def trigger_success(self):
         for i in range(2):
-            GPIO.output(LedBuzzer.SUCCESS_PIN, GPIO.HIGH)
+            GPIO.output(self.success_pin, GPIO.HIGH)
             time.sleep(0.2)
-            GPIO.output(LedBuzzer.SUCCESS_PIN, GPIO.LOW)
+            GPIO.output(self.success_pin, GPIO.LOW)
             time.sleep(0.2)
     def trigger_failure(self):
-        GPIO.output(LedBuzzer.FAILURE_PIN, GPIO.HIGH)
+        GPIO.output(self.failure_pin, GPIO.HIGH)
         time.sleep(0.5)
-        GPIO.output(LedBuzzer.FAILURE_PIN, GPIO.LOW)
+        GPIO.output(self.failure_pin, GPIO.LOW)
 
