@@ -96,6 +96,8 @@ class Meeting(models.Model):
 class Registration(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    def __str__(self):
+        return 'Registration {} {}'.format(self.course.code, self.student.npm)
 
 class Attendance(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)

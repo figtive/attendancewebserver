@@ -72,7 +72,7 @@ class LcdLock:
     def wait_empty(self):
         while True:
             if self.queue.empty() and not self.locked:
-                sys_time.sleep(0.1)
+                sys_time.sleep(LcdLock.WAIT_CHECK_INTERVAL)
                 return
             sys_time.sleep(LcdLock.WAIT_CHECK_INTERVAL)
 

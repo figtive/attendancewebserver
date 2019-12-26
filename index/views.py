@@ -169,11 +169,12 @@ def upload_courses(data):
     for line in data:
         fields = line.split(',')
         print(fields)
-        if len(fields) != 3:
+        if len(fields) != 4:
             continue
         new_code = fields[0]
         new_name = fields[1]
         new_lecturer_npm = fields[2].strip("\r")
+        late_tolerance = fields[3].strip("\r")
         print(new_lecturer_npm)
         try:
             new_lecturers = Lecturer.objects.all().filter(npm=new_lecturer_npm)
@@ -184,7 +185,7 @@ def upload_courses(data):
             try:
                 item = Course.objects.get(code=new_code)
             except Course.DoesNotExist:
-                Course.objects.create(code=new_code,name=new_name,lecturer=new_lecturer)
+                Course.objects.create(code=new_code,name=new_name,lecturer=new_lecturer,late_tolerance=int(late_tolerance))
             else:
                 item = Course.objects.filter(
                     code=new_code
