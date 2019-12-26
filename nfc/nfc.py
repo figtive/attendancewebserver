@@ -1,3 +1,22 @@
+#
+# File: nfc.py
+#
+# nfc is the main function for reading data from NFC reader and controlling
+#   the flow of system. There are 3 threads run in parallel:
+#       -  display_date_time, displays current date time to LCD every second
+#       -  start_nfc_poll_producer, repeatedly reads input from NFC reader and 
+#            puts each line of its output to a thread safe queue
+#       -  start_nfc_poll_consumer, reads from queue and handles all logic,
+#            writing feedback through LCD, LED and buzzer, prompts for input using
+#            keypad when necessary and performs all database operations
+# Copyright (c) 2019 KukFight Group
+# Authors:
+#   Nicolaus Christian Gozali
+# This program is free script/software. This program is distributed in the 
+# hope that it will be useful, but WITHOUT ANY WARRANTY; without even the 
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+
 import os
 import sys
 import django
@@ -33,6 +52,10 @@ def get_current_date_time():
     return timezone.localtime(timezone.now())
 
 class LcdLock:
+    '''
+    A lock to ensure that display_date_time thread does not overwrite LCD
+    when there is important information displayed
+    '''
     WAIT_CHECK_INTERVAL = 0.1
     def __init__(self):
         self.queue = queue.Queue()
@@ -49,10 +72,14 @@ class LcdLock:
     def wait_empty(self):
         while True:
             if self.queue.empty() and not self.locked:
+                sys_time.sleep(0.1)
                 return
             sys_time.sleep(LcdLock.WAIT_CHECK_INTERVAL)
 
 class SystemState:
+    '''
+    Checks whether system is currently idle or having an ongoing class
+    '''
     IDLE = 0
     ON_GOING_CLASS = 1
     def __init__(self):
@@ -84,6 +111,9 @@ class SystemState:
         return self.meeting
 
 class Keypad:
+    '''
+    An interface to read input from USB numeric keypad
+    '''
     MAPPING = {
         "0": "KEY_KP0",
         "1": "KEY_KP1",
@@ -130,6 +160,7 @@ class Keypad:
 def start_nfc_poll_producer(queue_to_put):
     logging.info('nfc poll producer started')
     while True:
+        # repeatedly read output from NFC reader and put in queue
         process = subprocess.Popen(['unbuffer', 'nfc-poll'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout = AsynchronousFileReader(process.stdout, autostart=True)
         stderr = AsynchronousFileReader(process.stderr, autostart=True)
@@ -149,10 +180,12 @@ def start_nfc_poll_consumer(queue_to_read, keypad, lcd, led_buzzer, system_state
     logging.info('nfc poll consumer started')
     write_to_lcd_and_lock(lcd, ["attendance", "system"])
     while True:
+        # wait until queue contains an item
         nfc_output_line = queue_to_read.get()
         uid_line_match = re.search("UID.*\\n", nfc_output_line)
         if uid_line_match is None:
             continue
+        # record raw data
         record = Record.objects.create(payload=uid_line_match.group())
         uid = re.sub('( |\\n)', '',  uid_line_match.group().split(':')[1])
         logging.info("read uid {}".format(uid))
@@ -167,7 +200,7 @@ def start_nfc_poll_consumer(queue_to_read, keypad, lcd, led_buzzer, system_state
                 logging.info("lecturer {} found".format(repr(lecturer[0])))
                 meeting_type_input = choice_menu(lcd, lcd_lock, keypad, ["normal", "substitute"])
                 if meeting_type_input == "normal":
-                    course_class = get_nearest_course_class_of_lectuerer(lecturer[0], record.get_date_time())
+                    course_class = get_nearest_course_class_of_lectuerer(lecturer[0], record.get_date_time)
                     if course_class is None:
                         write_to_lcd_and_lock_failure(lcd, ["no class", "found for today"], led_buzzer)
                         continue
@@ -184,10 +217,13 @@ def start_nfc_poll_consumer(queue_to_read, keypad, lcd, led_buzzer, system_state
                         course_class=course_class, \
                         record=record, meeting_type="1")
                 logging.info("meeting {} created".format(repr(meeting)))
-                write_to_lcd_and_lock_success(lcd, ["{} {}".format(meeting.course_class.course.name[:12], meeting.course_class.get_day_display()), \
-                    "{} {}".format(meeting.course_class.start_time, meeting.get_meeting_type_display()[:4])], led_buzzer)
-                system_state.set_on_going_class(meeting, record.get_date_time() + \
-                    (datetime.combine(date.min, course_class.end_time) - datetime.combine(date.min, course_class.start_time)))
+                write_to_lcd_and_lock_success(lcd, [
+                    "{} {}".format(meeting.course_class.course.name[:12], meeting.course_class.get_day_display()), \
+                    "{} {}".format(meeting.course_class.start_time, meeting.get_meeting_type_display()[:4])], \
+                    led_buzzer \
+                )
+                system_state.set_on_going_class(meeting, record.get_date_time + \
+                    meeting.course_class.get_duration)
         else:
             logging.info("system have on going class")
             lecturer = Lecturer.objects.all().filter(serial_number=uid)
@@ -220,6 +256,9 @@ def start_nfc_poll_consumer(queue_to_read, keypad, lcd, led_buzzer, system_state
                     write_to_lcd_and_lock_success(lcd, [student[0].name, str(student[0].npm)], led_buzzer)
 
 def choice_menu(lcd, lcd_lock, keypad, choices, display_func=lambda e: e):
+    '''
+    helper function to display choice based menu with LCD as display and keypad as input
+    '''
     lcd_lock.set_locked()
     selection = list(enumerate(choices))
     submenu_count = math.ceil(len(choices)/2)
@@ -244,6 +283,9 @@ def choice_menu(lcd, lcd_lock, keypad, choices, display_func=lambda e: e):
             return result
 
 def input_menu(lcd, lcd_lock, keypad, prompt_message, input_length):
+    '''
+    helper function to display input based prompt with LCD as display and keypad as input
+    '''
     lcd_lock.set_locked()
     answer=""
     write_to_lcd(lcd, [prompt_message])
@@ -261,6 +303,10 @@ def input_menu(lcd, lcd_lock, keypad, prompt_message, input_length):
             return answer
 
 def get_nearest_course_class_of_lectuerer(lecturer, date_time):
+    '''
+    helper function to automatically select nearest course class on same day for specified
+    lecturer, is used when lecturer selects "normal" class on card tap
+    '''
     day_of_week = str(date_time.weekday())
     time = date_time.time()
     print("time", time)

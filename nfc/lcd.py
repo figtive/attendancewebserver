@@ -1,3 +1,17 @@
+#
+# File: lcd.py
+#
+# lcd offers an interface to write into LCD display
+# Copyright (c) 2019 KukFight Group
+# Authors:
+#   Nicolaus Christian Gozali
+#   Michael Sudirman
+#   Andre Satria
+# This program is free script/software. This program is distributed in the 
+# hope that it will be useful, but WITHOUT ANY WARRANTY; without even the 
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+
 from RPLCD import CharLCD
 import RPi.GPIO as GPIO
 

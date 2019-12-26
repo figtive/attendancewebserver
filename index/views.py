@@ -1,14 +1,24 @@
+#
+# File: views.py
+#
+# views lists functions that are executed when an appointed url at index/urls.py
+#   is accessed, it will contain any logic necessary to provide data and also
+#   set which html file for rendered page
+# Copyright (c) 2019 KukFight Group
+# Authors:
+#   Nicolaus Christian Gozali
+#   Andre Satria
+#   Michael Sudirman
+# This program is free script/software. This program is distributed in the 
+# hope that it will be useful, but WITHOUT ANY WARRANTY; without even the 
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+
 import csv
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
 from .models import *
 from django.http import HttpResponse
-
-def index(request):
-    attendances = Attendance.objects.all()
-    return render(request, 'index.html', {
-        'attendances': attendances,
-    })
 
 def showMeeting(request, course_code):
     meetings = Meeting.objects.filter(course_class__course__code=course_code)
@@ -17,14 +27,13 @@ def showMeeting(request, course_code):
     return render(request, 'meetingsList.html', {
         'meetings': meetings,
         'course': course
-
     })
 
 def showAttendance(request,course_code, pk):
-    students = Attendance.objects.all().filter(meeting__pk=pk)
+    attendances = Attendance.objects.all().filter(meeting__pk=pk)
     meeting = Meeting.objects.get(pk=pk)
     return render(request, 'attendanceList.html', {
-        'students': students,
+        'attendances': attendances,
         'meeting': meeting,
     })
 

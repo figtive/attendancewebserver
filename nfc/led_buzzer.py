@@ -1,3 +1,18 @@
+#
+# File: led_buzzer.py
+#
+# led_buzzer offers an interface to display success or failure feedback involving
+#   buzzer and green, red LED
+# Copyright (c) 2019 KukFight Group
+# Authors:
+#   Nicolaus Christian Gozali
+#   Michael Sudirman
+#   Andre Satria
+# This program is free script/software. This program is distributed in the 
+# hope that it will be useful, but WITHOUT ANY WARRANTY; without even the 
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+
 import RPi.GPIO as GPIO
 import time
 
