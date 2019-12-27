@@ -91,30 +91,35 @@ def export_csv(request):
     attendances = Attendance.objects.all()  
     courses = Course.objects.all()
     # Header 
-    writer.writerow(['Course Name','NPM','Name','Attend','Absent','Total Meeting','%Attendance','Registered to Course'])
+    writer.writerow(['Course Name','NPM','Name','Attend','Late', 'Absent','Total Meeting','%Attendance','%Late','Registered to Course'])
     
     for course in courses:
         meetings_in_course = Meeting.objects.all().filter(course_class__course = course)
         attendances_in_course = Attendance.objects.all().filter(meeting__in=meetings_in_course)
         student_to_attendance_count = {}
+        student_to_late_count = {}
         course_name = "{} {}".format(course.code, course.name)
         total_meetings = len(meetings_in_course)
         # fill up all attendance list in a course
         for attendance in attendances_in_course:
             student_to_attendance_count[attendance.student.npm] = student_to_attendance_count.get(attendance.student.npm, 0) + 1
+            if attendance.is_late:
+                student_to_late_count[attendance.student.npm] = student_to_late_count.get(attendance.student.npm, 0) + 1
         # fill in course
         for student_npm, attendance_count in student_to_attendance_count.items():
             student = Student.objects.get(npm=student_npm)
             npm = student_npm
             name = student.name
             attend = attendance_count
+            late = student_to_late_count.get(student_npm, 0)
             absent = total_meetings - attend
             attend_percentage = 100.0 * attend / total_meetings
+            late_percentage = 100.0 * late / attend
 
             is_registered = Registration.objects.all().filter(course=course,student=student).exists()
             registered = 'Y' if is_registered else 'N'
     
-            writer.writerow([course_name,npm,name,attend,absent,total_meetings,attend_percentage,registered])
+            writer.writerow([course_name,npm,name,attend,late,absent,total_meetings,attend_percentage,late_percentage,registered])
 
     return response
 
