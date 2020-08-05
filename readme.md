@@ -1,4 +1,4 @@
-Attendance System Web Server
+# Attendance System Web Server
 
 An attendance system using student KTM card with web interface for lecturers to view report of attendance per meeting.
 Database can be populated by importing a csv and an attendance summary report can be exported in csv format.
